@@ -106,6 +106,7 @@ def scale_reverse_list(l):
     return list(map(lambda x: 1 - ((x - 1) / (max(l) - 1)), l))
 
 
+"""
 def handle_feature_selection(train, validate, test, k):
     train_x, train_y = split_label(train)
 
@@ -132,16 +133,22 @@ def handle_feature_selection(train, validate, test, k):
     test = transform(support, test)
 
     return train, validate, test
+"""
 
 
 def split_label(dataframe):
     return dataframe.drop([LABEL_COLUMN], axis=1), dataframe[LABEL_COLUMN].astype('category').cat.codes
 
 
-def transform(support, dataframe):
-    return dataframe[
-        (dataframe.drop([LABEL_COLUMN], axis=1).columns[support]).append(pd.Index([LABEL_COLUMN]))
-    ]
+def transform(support, dataframe, no_label=False):
+    if no_label:
+        return dataframe[
+            dataframe.columns[support]
+        ]
+    else:
+        return dataframe[
+            (dataframe.drop([LABEL_COLUMN], axis=1).columns[support]).append(pd.Index([LABEL_COLUMN]))
+        ]
 
 
 def identify_and_set_feature_type(dataframe):
@@ -209,7 +216,7 @@ def handle_right_feature_set(train, validate, test, test_new):
     train = transform(support, train)
     validate = transform(support, validate)
     test = transform(support, test)
-    test_new = transform(support, test_new)
+    test_new = transform(support, test_new, no_label=True)
 
     return train, validate, test, test_new
 
@@ -217,6 +224,16 @@ def handle_right_feature_set(train, validate, test, test_new):
 def prepare_data():
     df = read_data('ElectionsData.csv')
     test_new = read_data('ElectionsData_Pred_Features.csv', index=ID_COLUMN)
+
+    test_new.rename(
+        columns={
+            'Financial_balance_score_.0.1.': 'Financial_balance_score_(0-1)',
+            'X.Of_Household_Income': '%Of_Household_Income',
+            'X.Time_invested_in_work': '%Time_invested_in_work',
+            'X._satisfaction_financial_policy': '%_satisfaction_financial_policy'
+        },
+        inplace='True'
+    )
 
     original_features = df.columns.values
 

@@ -1,6 +1,8 @@
 import pandas as pd
-from DataPreparation import ID_COLUMN, INDEX_COLUMN, LABEL_COLUMN
 
+LABEL_COLUMN = 'Vote'
+INDEX_COLUMN = 'Index'
+ID_COLUMN = 'IdentityCard_Num'
 FILES_DIR = 'CSVFiles\\'
 
 
