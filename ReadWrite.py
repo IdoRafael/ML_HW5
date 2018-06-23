@@ -44,5 +44,5 @@ def save_features_selected(original_features, new_features):
                 file.write("%s\n" % f)
 
 
-def df_as_csv(df, name):
-    df.to_csv(FILES_DIR + "%s.csv" % name, index_label=INDEX_COLUMN)
+def df_as_csv(df, name, index_label):
+    df.to_csv(FILES_DIR + "%s.csv" % name, index_label=index_label)

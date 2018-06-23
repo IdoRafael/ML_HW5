@@ -13,7 +13,7 @@ from sklearn.model_selection import GridSearchCV
 import collections
 from collections import defaultdict
 from DataPreparation import split_label
-from ReadWrite import read_data, df_as_csv
+from ReadWrite import read_data
 
 MODELS_FOLDER = 'Models'
 
@@ -74,10 +74,6 @@ def get_clusters_labels_sizes(estimator, y):
 
 def load_prepared_data():
     return (read_data(x, index='Index') for x in ['train.csv', 'validate.csv', 'test.csv'])
-
-
-def load_unprepared_data():
-    return (read_data(x, index='Index') for x in ['train_original.csv', 'validate_original.csv', 'test_original.csv'])
 
 
 def test_model(model, name, parameters, train_x, train_y, score):
@@ -171,77 +167,6 @@ def load_experiments(names):
     for model, name in zip(models, names):
         print_model(model, name)
     return models
-
-
-def get_best_model(validate, models, names):
-    validate_x, validate_y = split_label(validate)
-    evaluated_models = [
-        [model, name, f1_score(validate_y, model.predict(validate_x), average='weighted')]
-        for model, name in zip(models, names)
-    ]
-
-    evaluated_models = sorted(evaluated_models, key=lambda t: t[2], reverse=True)
-
-    print('=' * 100)
-    print('Models Evaluated F1 Score:')
-
-    # Print results in a nice format using pd.Dataframe
-    print(pd.DataFrame(
-        np.matrix([[name, f1] for _, name, f1 in evaluated_models]).transpose(), ['Model Name', 'F1 Score']
-    ).transpose())
-
-    print()
-    best = evaluated_models[0]
-    print('Best Model Is:')
-    print(best[1], best[2])
-    print('=' * 100)
-
-    return best[0], best[1]
-
-
-def predict_test_and_save_results(model, name, test):
-    test_x, test_y = split_label(test)
-    pred_y = model.predict(test_x)
-    print('=' * 100)
-    print(
-        '%s Test F1 (shhh, we\'re not supposed to know this):' % name,
-        f1_score(test_y, pred_y, average='weighted')
-    )
-    print('=' * 100)
-
-    code_to_name = dict(enumerate(test['Vote'].astype('category').cat.categories))
-    results = pd.DataFrame(pred_y, test_x.index.values, columns=['Vote'])
-    results['Vote'] = results['Vote'].map(code_to_name).astype('category')
-
-    vote_distribution = results['Vote'].value_counts()
-    vote_distribution = vote_distribution.divide(sum(vote_distribution.values))
-    vote_distribution = vote_distribution.multiply(100)
-
-    plt.figure(figsize=(10, 10))
-    bar_plot = vote_distribution.plot.bar(
-        color=[c[:-1] for c in results['Vote'].value_counts().index.values],
-        edgecolor='black',
-        width=0.8
-    )
-
-    for p in bar_plot.patches:
-        bar_plot.annotate("{:.1f}".format(p.get_height()), (p.get_x() + 0.2, p.get_height() + 0.2))
-
-    bar_plot.set_xlabel('Party')
-    bar_plot.set_ylabel('Vote %')
-
-    plt.savefig('vote_distribution.png')
-    df_as_csv(results, 'results')
-
-    print('=' * 100)
-    print('Confusion Matrix:')
-    print(confusion_matrix(test_y, pred_y))
-    print('=' * 100)
-    print("Test Error (1-accuracy):")
-    print(1 - accuracy_score(test_y, pred_y))
-    print('=' * 100)
-
-    print(code_to_name)
 
 
 def save_models(models, names):
