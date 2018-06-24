@@ -1,21 +1,24 @@
+import itertools
 import collections
+import itertools
 import os
 import pickle
 import time
-import matplotlib.pyplot as plt
+from collections import Counter
+from collections import defaultdict
+from operator import itemgetter
 import numpy as np
-import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import completeness_score, v_measure_score, homogeneity_score, adjusted_rand_score, \
     calinski_harabaz_score, silhouette_score
-from sklearn.metrics import make_scorer, f1_score, confusion_matrix, accuracy_score
+from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
-import collections
-from collections import defaultdict
 from DataPreparation import split_label
+from Prediction import load_prepared_data
 from ReadWrite import read_data
 
 MODELS_FOLDER = 'Models'
+ID_COLUMN = 'IdentityCard_Num'
 
 
 def get_clusters_indices(estimator):
@@ -40,7 +43,7 @@ def get_clusters_distribution(estimator, y):
 
 
 def normalize_counter(c):
-    return [y for _,y in [(i, round(c[i] / sum(c.values()) * 100.0)) for i in c]]
+    return [y for _, y in [(i, round(c[i] / sum(c.values()) * 100.0)) for i in c]]
 
 
 def get_clusters_labels(estimator, y):
@@ -62,7 +65,7 @@ def get_clusters_sizes_percent(estimator):
 
     s = sum(d.values())
 
-    return collections.OrderedDict(sorted({k: 100 * d[k]/s for k in d}.items()))
+    return collections.OrderedDict(sorted({k: 100 * d[k] / s for k in d}.items()))
 
 
 def get_clusters_labels_sizes(estimator, y):
@@ -70,10 +73,6 @@ def get_clusters_labels_sizes(estimator, y):
     sizes = get_clusters_sizes_percent(estimator)
 
     return collections.OrderedDict(sorted({k: [list(labels[k]), sizes[k]] for k in labels}.items()))
-
-
-def load_prepared_data():
-    return (read_data(x, index='Index') for x in ['train.csv', 'validate.csv', 'test.csv'])
 
 
 def test_model(model, name, parameters, train_x, train_y, score):
@@ -202,11 +201,11 @@ def print_model(model, name):
 
 
 def run_k_means_all_data():
-    train, validate, test = load_prepared_data()
-    df = pd.concat([train, validate, test])
+    ID_COLUMN = 'IdentityCard_Num'
+    test_new_x = read_data('test_new.csv', index=ID_COLUMN)
+    test_new_y = read_data('results.csv', index=ID_COLUMN)
 
-    # X, y = df.drop(['Vote'], axis=1), df['Vote']
-    X, y = split_label(df)
+    X, y = test_new_x, test_new_y.PredictVote.astype('category').cat.codes
 
     for k in [6, 9, 10, 11, 12]:
         print(k, '=========')
@@ -222,5 +221,38 @@ def run_k_means_all_data():
         print('=========')
 
 
+def test_combinations():
+    train, validate, test, test_new = load_prepared_data()
+    train_x, train_y = split_label(train)
+    labels = sorted(list(filter(lambda x: x not in {3, 4, 7}, train_y.unique())))
+
+    test_new_x = read_data('test_new.csv', index=ID_COLUMN)
+    test_new_y = read_data('results.csv', index=ID_COLUMN)['PredictVote'].astype('category').cat.codes
+
+    result = []
+
+    for r in range(1, min(len(labels) + 1, 11)):
+        print(r)
+        for c in itertools.combinations(labels, r):
+            y = test_new_y.map(lambda x: 1 if x in c else 0)
+            counter = Counter(y)
+            if {i: counter[i] / len(y) * 100.0 for i in counter}[1] < 51:
+                continue
+            else:
+                score = calinski_harabaz_score(test_new_x, y)
+                print(c, score)
+                result.append((c, score))
+
+    return result
+
+
+def get_best_coalitions():
+    l = sorted(test_combinations(), key=itemgetter(1), reverse=True)
+
+    print('Best coalitions:')
+    for coalition in l[:3]:
+        print(coalition)
+
+
 if __name__ == '__main__':
-    run_k_means_all_data()
+    get_best_coalitions()
