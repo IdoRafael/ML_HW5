@@ -255,4 +255,5 @@ def get_best_coalitions():
 
 
 if __name__ == '__main__':
+    run_k_means_all_data()
     get_best_coalitions()
